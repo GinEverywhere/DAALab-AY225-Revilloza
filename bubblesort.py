@@ -1,7 +1,9 @@
 import time
 import sys
+import gc
+import copy
 
-# Increase recursion depth for merge sort to handle large datasets
+# Increase recursion depth for Merge Sort
 sys.setrecursionlimit(20000)
 
 def bubble_sort(arr):
@@ -10,7 +12,6 @@ def bubble_sort(arr):
         for j in range(0, n - i - 1):
             if arr[j] > arr[j + 1]:
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
-    return arr
 
 def insertion_sort(arr):
     for i in range(1, len(arr)):
@@ -20,120 +21,94 @@ def insertion_sort(arr):
             arr[j + 1] = arr[j]
             j -= 1
         arr[j + 1] = key
-    return arr
 
 def merge_sort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2
         L = arr[:mid]
         R = arr[mid:]
-
         merge_sort(L)
         merge_sort(R)
-
         i = j = k = 0
         while i < len(L) and j < len(R):
             if L[i] < R[j]:
-                arr[k] = L[i]
-                i += 1
+                arr[k] = L[i]; i += 1
             else:
-                arr[k] = R[j]
-                j += 1
+                arr[k] = R[j]; j += 1
             k += 1
-
         while i < len(L):
-            arr[k] = L[i]
-            i += 1
-            k += 1
-
+            arr[k] = L[i]; i += 1; k += 1
         while j < len(R):
-            arr[k] = R[j]
-            j += 1
-            k += 1
-    return arr
+            arr[k] = R[j]; j += 1; k += 1
 
 def load_data():
-    """Extracts numeric values from dataset.txt"""
     nums = []
     try:
         with open('dataset.txt', 'r') as f:
             for line in f:
                 content = line.strip()
                 if not content: continue
-                # Remove tags if present
                 if ']' in content:
                     content = content.split(']')[-1].strip()
                 if content.isdigit():
                     nums.append(int(content))
         return nums
     except FileNotFoundError:
-        print("Error: dataset.txt not found in the current directory.")
+        print("Error: dataset.txt not found.")
         return []
 
-def display_data(arr):
-    """Displays the entire dataset in a single column"""
-    print("\n--- Sorted Results (1 Column) ---")
-    for val in arr:
-        print(val)
-    print("---------------------------------")
-
 def menu():
+    master_data = load_data()
+    if not master_data:
+        return
+
     while True:
-        print("\n=== Sorting Menu ===")
+        print(f"\n=== Sorting Menu ({len(master_data)} items) ===")
         print("1. Bubble Sort")
         print("2. Insertion Sort")
         print("3. Merge Sort")
         print("4. Exit")
         
         choice = input("\nEnter your choice (1-4): ")
-        
-        if choice == '4':
-            print("Goodbye!")
-            break
+        if choice == '4': break
             
-        data = load_data()
-        if not data:
-            continue
-            
-        print(f"Sorting {len(data)} items...")
-        
-        # Variables to store timing
-        start_time = 0
-        end_time = 0
-        algo_name = ""
-        
-        # Timing starts EXACTLY before the function and stops EXACTLY after
         if choice == '1':
-            algo_name = "Bubble Sort"
-            start_time = time.perf_counter()
-            bubble_sort(data)
-            end_time = time.perf_counter()
-            
+            algo, name = bubble_sort, "Bubble Sort"
         elif choice == '2':
-            algo_name = "Insertion Sort"
-            start_time = time.perf_counter()
-            insertion_sort(data)
-            end_time = time.perf_counter()
-            
+            algo, name = insertion_sort, "Insertion Sort"
         elif choice == '3':
-            algo_name = "Merge Sort"
-            start_time = time.perf_counter()
-            merge_sort(data)
-            end_time = time.perf_counter()
-            
+            algo, name = merge_sort, "Merge Sort"
         else:
-            print("Invalid selection. Please run in a Terminal to type choices.")
             continue
-            
-        # Calculate duration
-        duration = end_time - start_time
+
+        # Create a fresh copy to ensure we aren't sorting an already sorted list
+        working_data = copy.deepcopy(master_data)
+
+        print(f"Measuring {name}...")
+
+        # --- THE PRECISION ZONE ---
+        gc.collect() 
+        gc.disable() 
         
-        # Display data (not included in timer)
-        display_data(data)
+        # Use nanoseconds for extreme precision
+        t_start = time.perf_counter_ns() 
+        algo(working_data)
+        t_stop = time.perf_counter_ns()
         
-        print(f"\nAlgorithm: {algo_name}")
-        # Display with 8 decimal places for high precision
-        print(f"Time Spent: {duration:.8f} seconds")
+        gc.enable()
+        # --------------------------
+
+        # Convert nanoseconds to seconds for display
+        duration_s = (t_stop - t_start) / 1_000_000_000
+        
+        # Display sorted result automatically
+        print("\n--- Sorted Results ---")
+        print(*working_data, sep="\n")
+        print("----------------------")
+        
+        print(f"\nAlgorithm: {name}")
+        print(f"Time Spent: {duration_s:.10f} seconds")
+        print(f"Time in Nanoseconds: {t_stop - t_start} ns")
 
 if __name__ == "__main__":
     menu()
